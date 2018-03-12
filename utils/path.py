@@ -1,6 +1,7 @@
 import hashlib
 import os
 from pathlib import Path
+from stat import S_ISWHT
 
 from . import process
 
@@ -145,3 +146,11 @@ def get_size(path, excludes=None):
     except Exception:
         log.exception("Exception getting size of %r: ", path)
     return 0
+
+
+def is_whiteout(path):
+    try:
+        return S_ISWHT(os.stat(path).st_mode)
+    except Exception:
+        log.exception("Exception determining if path is whiteout %s: ", path)
+    return False
