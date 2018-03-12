@@ -72,7 +72,7 @@ class OverlayfsHiddenFolder:
     def __files(self):
         hidden_files = []
         try:
-            tmp = path.find_files(self.upper_dir, '_HIDDEN~')
+            tmp = path.find_files(self.upper_dir)
 
             # check each path to determine if whiteout file
             for file_path in tmp:
