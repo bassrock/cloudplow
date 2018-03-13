@@ -91,9 +91,9 @@ class OverlayfsHiddenFolder:
             tmp = path.find_folders(self.upper_dir)
 
             # check each path to determine if whiteout file
-            for file_path in tmp:
-                if path.is_whiteout(file_path):
-                    hidden_folders.append(file_path)
+            for folder_path in tmp:
+                if path.is_whiteout(folder_path):
+                    hidden_folders.append(folder_path)
 
             log.info("Found %d hidden folders in %r", len(hidden_folders), self.upper_dir)
         except Exception:
