@@ -379,7 +379,7 @@ def do_plex_monitor():
     throttled = False
     throttle_speed = None
     # lock_file = lock.upload()
-    while true: # while lock_file.is_locked():
+    while True: # while lock_file.is_locked():
         streams = plex.get_streams()
         if streams is None:
             log.error("Failed to check Plex stream(s), trying again in %d seconds...",
