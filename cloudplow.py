@@ -174,204 +174,204 @@ def do_upload(remote=None):
     nzbget = None
     nzbget_paused = False
 
-    lock_file = lock.upload()
-    if lock_file.is_locked():
-        log.info("Waiting for running upload to finish before proceeding...")
+    #lock_file = lock.upload()
+    #if lock_file.is_locked():
+    #    log.info("Waiting for running upload to finish before proceeding...")
 
-    with lock_file:
-        log.info("Starting upload")
-        try:
-            # loop each supplied uploader config
-            for uploader_remote, uploader_config in conf.configs['uploader'].items():
-                # if remote is not None, skip this remote if it is not == remote
-                if remote and uploader_remote != remote:
-                    continue
+    #with lock_file:
+    log.info("Starting upload")
+    try:
+        # loop each supplied uploader config
+        for uploader_remote, uploader_config in conf.configs['uploader'].items():
+            # if remote is not None, skip this remote if it is not == remote
+            if remote and uploader_remote != remote:
+                continue
 
-                # retrieve rclone config for this remote
-                rclone_config = conf.configs['remotes'][uploader_remote]
+            # retrieve rclone config for this remote
+            rclone_config = conf.configs['remotes'][uploader_remote]
 
-                # send notification that upload is starting
-                notify.send(message="Upload of %d GB has begun for remote: %s" % (
-                    path.get_size(rclone_config['upload_folder'], uploader_config['size_excludes']), uploader_remote))
+            # send notification that upload is starting
+            notify.send(message="Upload of %d GB has begun for remote: %s" % (
+                path.get_size(rclone_config['upload_folder'], uploader_config['size_excludes']), uploader_remote))
 
-                # perform the upload
-                uploader = Uploader(uploader_remote, uploader_config, rclone_config, conf.configs['core']['dry_run'],
-                                    conf.configs['core']['rclone_binary_path'],
-                                    conf.configs['core']['rclone_config_path'], conf.configs['plex']['enabled'])
+            # perform the upload
+            uploader = Uploader(uploader_remote, uploader_config, rclone_config, conf.configs['core']['dry_run'],
+                                conf.configs['core']['rclone_binary_path'],
+                                conf.configs['core']['rclone_config_path'], conf.configs['plex']['enabled'])
 
-                # start the plex stream monitor before the upload begins, if enabled
-                if conf.configs['plex']['enabled'] and plex_monitor_thread is None:
-                    plex_monitor_thread = thread.start(do_plex_monitor, 'plex-monitor')
+            # start the plex stream monitor before the upload begins, if enabled
+            if conf.configs['plex']['enabled'] and plex_monitor_thread is None:
+                plex_monitor_thread = thread.start(do_plex_monitor, 'plex-monitor')
 
-                # pause the nzbget queue before starting the upload, if enabled
-                if conf.configs['nzbget']['enabled']:
-                    nzbget = Nzbget(conf.configs['nzbget']['url'])
-                    if nzbget.pause_queue():
-                        nzbget_paused = True
-                        log.info("Paused the Nzbget download queue, upload commencing!")
-                    else:
-                        log.error("Failed to pause the Nzbget download queue, upload commencing anyway...")
-
-                resp, resp_trigger = uploader.upload()
-                if resp:
-                    # non 0 result indicates a trigger was met, the result is how many hours to sleep this remote for
-                    log.info(
-                        "Upload aborted due to trigger: %r being met, %s will continue automatic uploading normally in "
-                        "%d hours", resp_trigger, uploader_remote, resp)
-
-                    # add remote to uploader_delay
-                    uploader_delay[uploader_remote] = time.time() + ((60 * 60) * resp)
-                    # send aborted upload notification
-                    notify.send(
-                        message="Upload was aborted for remote: %s due to trigger %r. Uploads suspended for %d hours" %
-                                (uploader_remote, resp_trigger, resp))
+            # pause the nzbget queue before starting the upload, if enabled
+            if conf.configs['nzbget']['enabled']:
+                nzbget = Nzbget(conf.configs['nzbget']['url'])
+                if nzbget.pause_queue():
+                    nzbget_paused = True
+                    log.info("Paused the Nzbget download queue, upload commencing!")
                 else:
-                    # send successful upload notification
-                    notify.send(message="Upload was completed successfully for remote: %s" % uploader_remote)
+                    log.error("Failed to pause the Nzbget download queue, upload commencing anyway...")
 
-                # remove leftover empty directories from disk
-                if not conf.configs['core']['dry_run']:
-                    uploader.remove_empty_dirs()
+            resp, resp_trigger = uploader.upload()
+            if resp:
+                # non 0 result indicates a trigger was met, the result is how many hours to sleep this remote for
+                log.info(
+                    "Upload aborted due to trigger: %r being met, %s will continue automatic uploading normally in "
+                    "%d hours", resp_trigger, uploader_remote, resp)
 
-                # resume the nzbget queue, if enabled
-                if conf.configs['nzbget']['enabled'] and nzbget is not None and nzbget_paused:
-                    if nzbget.resume_queue():
-                        nzbget_paused = False
-                        log.info("Resumed the Nzbget download queue!")
-                    else:
-                        log.error("Failed to resume the Nzbget download queue??")
+                # add remote to uploader_delay
+                uploader_delay[uploader_remote] = time.time() + ((60 * 60) * resp)
+                # send aborted upload notification
+                notify.send(
+                    message="Upload was aborted for remote: %s due to trigger %r. Uploads suspended for %d hours" %
+                            (uploader_remote, resp_trigger, resp))
+            else:
+                # send successful upload notification
+                notify.send(message="Upload was completed successfully for remote: %s" % uploader_remote)
 
-        except Exception:
-            log.exception("Exception occurred while uploading: ")
+            # remove leftover empty directories from disk
+            if not conf.configs['core']['dry_run']:
+                uploader.remove_empty_dirs()
+
+            # resume the nzbget queue, if enabled
+            if conf.configs['nzbget']['enabled'] and nzbget is not None and nzbget_paused:
+                if nzbget.resume_queue():
+                    nzbget_paused = False
+                    log.info("Resumed the Nzbget download queue!")
+                else:
+                    log.error("Failed to resume the Nzbget download queue??")
+
+    except Exception:
+        log.exception("Exception occurred while uploading: ")
 
     log.info("Finished upload")
 
 
 @decorators.timed
 def do_sync(use_syncer=None, syncer_delays=syncer_delay):
-    lock_file = lock.sync()
-    if lock_file.is_locked():
-        log.info("Waiting for running sync to finish before proceeding...")
+    #lock_file = lock.sync()
+    #if lock_file.is_locked():
+    #    log.info("Waiting for running sync to finish before proceeding...")
 
-    with lock_file:
-        log.info("Starting sync")
-        try:
-            for sync_name, sync_config in conf.configs['syncer'].items():
-                # if syncer is not None, skip this syncer if not == syncer
-                if use_syncer and sync_name != use_syncer:
-                    continue
+    #with lock_file:
+    log.info("Starting sync")
+    try:
+        for sync_name, sync_config in conf.configs['syncer'].items():
+            # if syncer is not None, skip this syncer if not == syncer
+            if use_syncer and sync_name != use_syncer:
+                continue
 
-                # send notification that sync is starting
-                notify.send(message='Sync initiated for syncer: %s. %s %s instance...' % (
-                    sync_name, 'Creating' if sync_config['instance_destroy'] else 'Starting', sync_config['service']))
+            # send notification that sync is starting
+            notify.send(message='Sync initiated for syncer: %s. %s %s instance...' % (
+                sync_name, 'Creating' if sync_config['instance_destroy'] else 'Starting', sync_config['service']))
 
-                # startup instance
-                resp, instance_id = syncer.startup(service=sync_config['service'], name=sync_name)
-                if not resp:
-                    # send notification of failure to startup instance
-                    notify.send(message='Syncer: %s failed to startup a %s instance. '
-                                        'Manually check no instances are still running!' %
-                                        (sync_name, 'new' if sync_config['instance_destroy'] else 'existing'))
-                    continue
+            # startup instance
+            resp, instance_id = syncer.startup(service=sync_config['service'], name=sync_name)
+            if not resp:
+                # send notification of failure to startup instance
+                notify.send(message='Syncer: %s failed to startup a %s instance. '
+                                    'Manually check no instances are still running!' %
+                                    (sync_name, 'new' if sync_config['instance_destroy'] else 'existing'))
+                continue
 
-                # setup instance
-                resp = syncer.setup(service=sync_config['service'], instance_id=instance_id,
-                                    rclone_config=conf.configs['core']['rclone_config_path'])
-                if not resp:
-                    # send notification of failure to setup instance
-                    notify.send(
-                        message='Syncer: %s failed to setup a %s instance. '
-                                'Manually check no instances are still running!' % (
-                                    sync_name, 'new' if sync_config['instance_destroy'] else 'existing'))
-                    continue
+            # setup instance
+            resp = syncer.setup(service=sync_config['service'], instance_id=instance_id,
+                                rclone_config=conf.configs['core']['rclone_config_path'])
+            if not resp:
+                # send notification of failure to setup instance
+                notify.send(
+                    message='Syncer: %s failed to setup a %s instance. '
+                            'Manually check no instances are still running!' % (
+                                sync_name, 'new' if sync_config['instance_destroy'] else 'existing'))
+                continue
 
-                # send notification of sync start
-                notify.send(message='Sync has begun for syncer: %s' % sync_name)
+            # send notification of sync start
+            notify.send(message='Sync has begun for syncer: %s' % sync_name)
 
-                # do sync
-                resp, resp_delay, resp_trigger = syncer.sync(service=sync_config['service'], instance_id=instance_id,
-                                                             dry_run=conf.configs['core']['dry_run'],
-                                                             rclone_config=conf.configs['core']['rclone_config_path'])
+            # do sync
+            resp, resp_delay, resp_trigger = syncer.sync(service=sync_config['service'], instance_id=instance_id,
+                                                         dry_run=conf.configs['core']['dry_run'],
+                                                         rclone_config=conf.configs['core']['rclone_config_path'])
 
-                if not resp and not resp_delay:
-                    log.error("Sync unexpectedly failed for syncer: %s", sync_name)
-                    # send unexpected sync fail notification
-                    notify.send(
-                        message='Sync failed unexpectedly for syncer: %s. '
-                                'Manually check no instances are still running!' % sync_name)
+            if not resp and not resp_delay:
+                log.error("Sync unexpectedly failed for syncer: %s", sync_name)
+                # send unexpected sync fail notification
+                notify.send(
+                    message='Sync failed unexpectedly for syncer: %s. '
+                            'Manually check no instances are still running!' % sync_name)
 
-                elif not resp and resp_delay and resp_trigger:
-                    # non 0 resp_delay result indicates a trigger was met, the result is how many hours to sleep
-                    # this syncer for
-                    log.info(
-                        "Sync aborted due to trigger: %r being met, %s will continue automatic syncing normally in "
-                        "%d hours", resp_trigger, sync_name, resp_delay)
-                    # add syncer to syncer_delays (which points to syncer_delay)
-                    syncer_delays[sync_name] = time.time() + ((60 * 60) * resp_delay)
-                    # send aborted sync notification
-                    notify.send(
-                        message="Sync was aborted for syncer: %s due to trigger %r. Syncs suspended for %d hours" %
-                                (sync_name, resp_trigger, resp_delay))
-                else:
-                    log.info("Syncing completed successfully for syncer: %s", sync_name)
-                    # send successful sync notification
-                    notify.send(message="Sync was completed successfully for syncer: %s" % sync_name)
+            elif not resp and resp_delay and resp_trigger:
+                # non 0 resp_delay result indicates a trigger was met, the result is how many hours to sleep
+                # this syncer for
+                log.info(
+                    "Sync aborted due to trigger: %r being met, %s will continue automatic syncing normally in "
+                    "%d hours", resp_trigger, sync_name, resp_delay)
+                # add syncer to syncer_delays (which points to syncer_delay)
+                syncer_delays[sync_name] = time.time() + ((60 * 60) * resp_delay)
+                # send aborted sync notification
+                notify.send(
+                    message="Sync was aborted for syncer: %s due to trigger %r. Syncs suspended for %d hours" %
+                            (sync_name, resp_trigger, resp_delay))
+            else:
+                log.info("Syncing completed successfully for syncer: %s", sync_name)
+                # send successful sync notification
+                notify.send(message="Sync was completed successfully for syncer: %s" % sync_name)
 
-                # destroy instance
-                resp = syncer.destroy(service=sync_config['service'], instance_id=instance_id)
-                if not resp:
-                    # send notification of failure to destroy/stop instance
-                    notify.send(
-                        message="Syncer: %s failed to %s its instance: %s. "
-                                "Manually check no instances are still running!" % (
-                                    sync_name, 'destroy' if sync_config['instance_destroy'] else 'stop', instance_id))
-                else:
-                    # send notification of instance destroyed
-                    notify.send(message="Syncer: %s has %s its %s instance" % (
-                        sync_name, 'destroyed' if sync_config['instance_destroy'] else 'stopped',
-                        sync_config['service']))
+            # destroy instance
+            resp = syncer.destroy(service=sync_config['service'], instance_id=instance_id)
+            if not resp:
+                # send notification of failure to destroy/stop instance
+                notify.send(
+                    message="Syncer: %s failed to %s its instance: %s. "
+                            "Manually check no instances are still running!" % (
+                                sync_name, 'destroy' if sync_config['instance_destroy'] else 'stop', instance_id))
+            else:
+                # send notification of instance destroyed
+                notify.send(message="Syncer: %s has %s its %s instance" % (
+                    sync_name, 'destroyed' if sync_config['instance_destroy'] else 'stopped',
+                    sync_config['service']))
 
-        except Exception:
-            log.exception("Exception occurred while syncing: ")
+    except Exception:
+        log.exception("Exception occurred while syncing: ")
 
     log.info("Finished sync")
 
 
 @decorators.timed
 def do_hidden():
-    lock_file = lock.hidden()
-    if lock_file.is_locked():
-        log.info("Waiting for running hidden cleaner to finish before proceeding...")
+    #lock_file = lock.hidden()
+    #if lock_file.is_locked():
+    #    log.info("Waiting for running hidden cleaner to finish before proceeding...")
 
-    with lock_file:
-        log.info("Starting hidden cleaning")
-        try:
-            # loop each supplied hidden folder
-            for hidden_folder, hidden_config in conf.configs['hidden'].items():
-                hidden = UnionfsHiddenFolder(hidden_folder, conf.configs['core']['dry_run'],
-                                             conf.configs['core']['rclone_binary_path'],
-                                             conf.configs['core']['rclone_config_path'])
+    #with lock_file:
+    log.info("Starting hidden cleaning")
+    try:
+        # loop each supplied hidden folder
+        for hidden_folder, hidden_config in conf.configs['hidden'].items():
+            hidden = UnionfsHiddenFolder(hidden_folder, conf.configs['core']['dry_run'],
+                                         conf.configs['core']['rclone_binary_path'],
+                                         conf.configs['core']['rclone_config_path'])
 
-                # loop the chosen remotes for this hidden config cleaning files
-                for hidden_remote_name in hidden_config['hidden_remotes']:
-                    # retrieve rclone config for this remote
-                    hidden_remote_config = conf.configs['remotes'][hidden_remote_name]
+            # loop the chosen remotes for this hidden config cleaning files
+            for hidden_remote_name in hidden_config['hidden_remotes']:
+                # retrieve rclone config for this remote
+                hidden_remote_config = conf.configs['remotes'][hidden_remote_name]
 
-                    # clean remote
-                    clean_resp, deleted_ok, deleted_fail = hidden.clean_remote(hidden_remote_name, hidden_remote_config)
+                # clean remote
+                clean_resp, deleted_ok, deleted_fail = hidden.clean_remote(hidden_remote_name, hidden_remote_config)
 
-                    # send notification
-                    if deleted_ok or deleted_fail:
-                        notify.send(message="Cleaned %d hidden(s) with %d failure(s) from remote: %s" % (
-                            deleted_ok, deleted_fail, hidden_remote_name))
+                # send notification
+                if deleted_ok or deleted_fail:
+                    notify.send(message="Cleaned %d hidden(s) with %d failure(s) from remote: %s" % (
+                        deleted_ok, deleted_fail, hidden_remote_name))
 
-                # remove the HIDDEN~ files from disk and empty directories from unionfs-fuse folder
-                if not conf.configs['core']['dry_run']:
-                    hidden.remove_local_hidden()
-                    hidden.remove_empty_dirs()
+            # remove the HIDDEN~ files from disk and empty directories from unionfs-fuse folder
+            if not conf.configs['core']['dry_run']:
+                hidden.remove_local_hidden()
+                hidden.remove_empty_dirs()
 
-        except Exception:
-            log.exception("Exception occurred while cleaning hiddens: ")
+    except Exception:
+        log.exception("Exception occurred while cleaning hiddens: ")
 
     log.info("Finished hidden cleaning")
 
@@ -402,73 +402,73 @@ def do_plex_monitor():
 
     throttled = False
     throttle_speed = None
-    lock_file = lock.upload()
-    while lock_file.is_locked():
-        streams = plex.get_streams()
-        if streams is None:
-            log.error("Failed to check Plex stream(s), trying again in %d seconds...",
-                      conf.configs['plex']['poll_interval'])
-        else:
-            # we had a response
-            stream_count = 0
+    #lock_file = lock.upload()
+    #while lock_file.is_locked():
+    streams = plex.get_streams()
+    if streams is None:
+        log.error("Failed to check Plex stream(s), trying again in %d seconds...",
+                  conf.configs['plex']['poll_interval'])
+    else:
+        # we had a response
+        stream_count = 0
+        for stream in streams:
+            if stream.state == 'playing' or stream.state == 'buffering':
+                stream_count += 1
+
+        # are we already throttled?
+        if not throttled and stream_count >= conf.configs['plex']['max_streams_before_throttle']:
+            log.info("There was %d playing stream(s) on Plex while we were currently un-throttled, streams:",
+                     stream_count)
             for stream in streams:
-                if stream.state == 'playing' or stream.state == 'buffering':
-                    stream_count += 1
+                log.info(stream)
+            log.info("Upload throttling will now commence...")
 
-            # are we already throttled?
-            if not throttled and stream_count >= conf.configs['plex']['max_streams_before_throttle']:
-                log.info("There was %d playing stream(s) on Plex while we were currently un-throttled, streams:",
-                         stream_count)
-                for stream in streams:
-                    log.info(stream)
-                log.info("Upload throttling will now commence...")
+            # send throttle request
+            throttle_speed = misc.get_nearest_less_element(conf.configs['plex']['rclone']['throttle_speeds'],
+                                                           stream_count)
+            throttled = rclone.throttle(throttle_speed)
 
-                # send throttle request
-                throttle_speed = misc.get_nearest_less_element(conf.configs['plex']['rclone']['throttle_speeds'],
-                                                               stream_count)
-                throttled = rclone.throttle(throttle_speed)
+            # send notification
+            if throttled:
+                notify.send(
+                    message="Throttled current upload to %s because there was %d playing stream(s) on Plex" %
+                            (throttle_speed, stream_count))
+
+        elif throttled:
+            if stream_count < conf.configs['plex']['max_streams_before_throttle']:
+                log.info(
+                    "There was less than %d playing stream(s) on Plex while we were currently throttled, "
+                    "removing throttle!", conf.configs['plex']['max_streams_before_throttle'])
+                # send un-throttle request
+                throttled = not rclone.no_throttle()
+                throttle_speed = None
 
                 # send notification
-                if throttled:
+                if not throttled:
                     notify.send(
-                        message="Throttled current upload to %s because there was %d playing stream(s) on Plex" %
-                                (throttle_speed, stream_count))
+                        message="Un-throttled current upload because there was less than %d playing stream(s) on "
+                                "Plex" % conf.configs['plex']['max_streams_before_throttle'])
 
-            elif throttled:
-                if stream_count < conf.configs['plex']['max_streams_before_throttle']:
-                    log.info(
-                        "There was less than %d playing stream(s) on Plex while we were currently throttled, "
-                        "removing throttle!", conf.configs['plex']['max_streams_before_throttle'])
-                    # send un-throttle request
-                    throttled = not rclone.no_throttle()
-                    throttle_speed = None
+            elif misc.get_nearest_less_element(conf.configs['plex']['rclone']['throttle_speeds'],
+                                               stream_count) != throttle_speed:
+                # throttle speed changed, probably due to more/less streams, re-throttle
+                throttle_speed = misc.get_nearest_less_element(conf.configs['plex']['rclone']['throttle_speeds'],
+                                                               stream_count)
+                log.info("Adjusting throttle speed for current upload to %s because there "
+                         "was now %d playing stream(s) on Plex", throttle_speed, stream_count)
 
-                    # send notification
-                    if not throttled:
-                        notify.send(
-                            message="Un-throttled current upload because there was less than %d playing stream(s) on "
-                                    "Plex" % conf.configs['plex']['max_streams_before_throttle'])
+                throttled = rclone.throttle(throttle_speed)
+                if throttled and conf.configs['plex']['verbose_notifications']:
+                    notify.send(
+                        message='Throttle for current upload was adjusted to %s due to %d playing stream(s)'
+                                ' on Plex' % (throttle_speed, stream_count))
 
-                elif misc.get_nearest_less_element(conf.configs['plex']['rclone']['throttle_speeds'],
-                                                   stream_count) != throttle_speed:
-                    # throttle speed changed, probably due to more/less streams, re-throttle
-                    throttle_speed = misc.get_nearest_less_element(conf.configs['plex']['rclone']['throttle_speeds'],
-                                                                   stream_count)
-                    log.info("Adjusting throttle speed for current upload to %s because there "
-                             "was now %d playing stream(s) on Plex", throttle_speed, stream_count)
+            else:
+                log.info("There was %d playing stream(s) on Plex while we were already throttled to %s, throttling "
+                         "will continue..", stream_count, throttle_speed)
 
-                    throttled = rclone.throttle(throttle_speed)
-                    if throttled and conf.configs['plex']['verbose_notifications']:
-                        notify.send(
-                            message='Throttle for current upload was adjusted to %s due to %d playing stream(s)'
-                                    ' on Plex' % (throttle_speed, stream_count))
-
-                else:
-                    log.info("There was %d playing stream(s) on Plex while we were already throttled to %s, throttling "
-                             "will continue..", stream_count, throttle_speed)
-
-        # the lock_file exists, so we can assume an upload is in progress at this point
-        time.sleep(conf.configs['plex']['poll_interval'])
+    # the lock_file exists, so we can assume an upload is in progress at this point
+    time.sleep(conf.configs['plex']['poll_interval'])
 
     log.info("Finished monitoring Plex stream(s)!")
     plex_monitor_thread = None
